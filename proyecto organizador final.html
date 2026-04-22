@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>FocusFlow</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;500;700&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:'Manrope',sans-serif;
+  background:#e8e6e1;
+  color:#2e2e2e;
+  overflow:hidden;
+  transition:0.4s;
+}
+body.dark{ background:#0f1115; color:white; }
+
+/* BG */
+.bg{ position:fixed; inset:0; background-size:cover; z-index:-2; }
+.overlay{ position:fixed; inset:0; backdrop-filter:blur(8px); background:rgba(255,255,255,0.25);}
+body.dark .overlay{ background:rgba(0,0,0,0.4); }
+
+/* CLOCK */
+.clock-box{ position:absolute; top:30px; left:50%; transform:translateX(-50%); text-align:center; }
+.clock{ font-size:65px; font-family:'Space Grotesk'; }
+
+/* PROGRESS */
+.progress{ width:220px; height:8px; background:rgba(0,0,0,0.1); border-radius:10px; margin:10px auto; overflow:hidden;}
+.progress-bar{ height:100%; width:0%; background:#5c4b3b; transition:0.4s;}
+#percent{ font-size:13px; opacity:0.7; }
+
+/* PANELS */
+.panel{
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:280px; padding:20px; border-radius:25px;
+  backdrop-filter:blur(8px);
+  background:rgba(255,255,255,0.3);
+  box-shadow:0 10px 40px rgba(0,0,0,0.2);
+}
+.left{ left:20px; }
+.right{ right:20px; }
+
+.focus .panel{ opacity:0; pointer-events:none; }
+
+/* INPUTS */
+input,select{
+  width:100%; margin-bottom:10px; padding:10px;
+  border-radius:12px; border:none;
+  background:rgba(255,255,255,0.6);
+}
+
+/* BUTTON */
+button{
+  width:100%; padding:10px; border:none;
+  border-radius:12px;
+  background:#5c4b3b; color:white;
+  cursor:pointer;
+  transition:0.2s;
+}
+button:hover{ transform:scale(1.05); }
+
+/* TASK */
+.task{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px;
+  border-radius:12px;
+  margin-bottom:6px;
+  background:rgba(255,255,255,0.4);
+  cursor:grab;
+  transition:0.3s;
+}
+
+/* animación al borrar */
+.task.removing{
+  opacity:0;
+  transform:translateX(40px);
+}
+
+/* botón basura */
+.delete-btn{
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  font-size:16px;
+}
+
+/* ROUTINE */
+.block{ padding:8px; margin-bottom:5px; border-radius:10px; background:rgba(0,0,0,0.05);}
+.break{ font-size:12px; opacity:0.7; }
+
+/* SCROLL RUTINA */
+#routine{
+  max-height:300px;
+  overflow-y:auto;
+  padding-right:5px;
+}
+
+#routine::-webkit-scrollbar{ width:6px; }
+#routine::-webkit-scrollbar-thumb{
+  background:#5c4b3b;
+  border-radius:10px;
+}
+
+/* TIMER */
+#timer{ font-size:35px; text-align:center; }
+#modeLabel{ text-align:center; margin-bottom:5px; font-weight:600; }
+
+.toggle{ position:absolute; top:20px; right:20px; cursor:pointer; }
+
+iframe{ width:100%; height:120px; border:none; border-radius:10px; }
+
+/* BOTÓN REGRESAR */
+#exitFocusBtn{
+  position:fixed;
+  bottom:30px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:12px 25px;
+  border:none;
+  border-radius:20px;
+  background:#5c4b3b;
+  color:white;
+  cursor:pointer;
+  display:none;
+  z-index:10;
+}
+.focus #exitFocusBtn{ display:block; }
+
+</style>
+</head>
+
+<body>
+
+<div class="bg" id="bg"></div>
+<div class="overlay"></div>
+
+<div class="toggle" onclick="toggleDark()">🌙</div>
+
+<div class="clock-box">
+  <div class="clock" id="clock"></div>
+
+  <div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div id="percent">0% completed</div>
+
+  <div>FocusFlow</div>
+</div>
+
+<!-- LEFT -->
+<div class="panel left">
+
+<input id="task" placeholder="Task">
+<input id="time" type="number" placeholder="Minutes">
+<button onclick="addTask()">Add Task</button>
+
+<div id="taskList"></div>
+
+<input id="total" type="number" placeholder="Total time">
+<button onclick="generate()">Generate Routine</button>
+
+<select onchange="changeBG(this.value)">
+<option>Background</option>
+<option value="forest">Bosque</option>
+<option value="cafe">Café</option>
+<option value="rain">Lluvia</option>
+</select>
+
+<select onchange="music(this.value)">
+<option>Music</option>
+<option value="5qap5aO4i9A">LoFi</option>
+<option value="DWcJFNfaw9c">Focus</option>
+<option value="jfKfPfyJRdk">Rain</option>
+</select>
+
+<div id="player"></div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="panel right">
+
+<h3>Pomodoro</h3>
+
+<div id="modeLabel">Focus</div>
+<div id="timer">25:00</div>
+
+<button onclick="start()">Start</button>
+<button onclick="pause()">Pause</button>
+<button onclick="reset()">Reset</button>
+<button id="focusBtn" onclick="toggleFocus()">Focus Mode</button>
+
+<h3>Routine</h3>
+<div id="routine"></div>
+
+</div>
+
+<button id="exitFocusBtn" onclick="toggleFocus()">Regresar</button>
+
+<script>
+
+/* CLOCK */
+setInterval(()=>{
+clock.innerText=new Date().toLocaleTimeString();
+},1000);
+
+/* DARK */
+function toggleDark(){ document.body.classList.toggle("dark"); }
+
+/* TASKS */
+let tasks=[];
+let draggedIndex=null;
+
+function addTask(){
+let t=task.value;
+let timeVal=parseInt(time.value);
+if(!t||!timeVal) return;
+
+tasks.push({t,time:timeVal});
+renderTasks();
+}
+
+/* RENDER con borrar */
+function renderTasks(){
+taskList.innerHTML="";
+
+tasks.forEach((task,i)=>{
+taskList.innerHTML+=`
+<div class="task" id="task-${i}" draggable="true"
+ondragstart="dragStart(${i})"
+ondrop="dropTask(${i})"
+ondragover="allowDrop(event)">
+
+  <span>${task.t} - ${task.time}m</span>
+
+  <button class="delete-btn" onclick="deleteTask(${i})">🗑️</button>
+
+</div>`;
+});
+}
+
+/* BORRAR con confirm + animación */
+function deleteTask(index){
+if(!confirm("¿Eliminar esta tarea?")) return;
+
+const el = document.getElementById(`task-${index}`);
+el.classList.add("removing");
+
+setTimeout(()=>{
+tasks.splice(index,1);
+renderTasks();
+},300);
+}
+
+/* DRAG */
+function dragStart(i){ draggedIndex=i; }
+function allowDrop(e){ e.preventDefault(); }
+function dropTask(i){
+let temp=tasks[draggedIndex];
+tasks[draggedIndex]=tasks[i];
+tasks[i]=temp;
+renderTasks();
+}
+
+/* IA */
+function getPriority(task){
+const t = task.t.toLowerCase();
+
+if(t.includes("ensayo")||t.includes("examen")||t.includes("estudiar")) return 3;
+if(t.includes("tarea")||t.includes("ejercicio")) return 2;
+if(t.includes("dibujo")||t.includes("arte")) return 1;
+
+return 2;
+}
+
+/* PROGRESS */
+let totalBlocks=0;
+let completedBlocks=0;
+
+function updateProgress(){
+if(totalBlocks===0) return;
+let percentVal=Math.round((completedBlocks/totalBlocks)*100);
+progressBar.style.width=percentVal+"%";
+percent.innerText=percentVal+"% completed";
+}
+
+/* GENERATE */
+function generate(){
+let total=parseInt(document.getElementById("total").value);
+if(!total) return;
+
+let sorted=[...tasks].sort((a,b)=>{
+return getPriority(b)-getPriority(a)||b.time-a.time;
+});
+
+let small=sorted.filter(t=>t.time<=15);
+let big=sorted.filter(t=>t.time>15);
+
+let merged=[...big];
+if(small.length>0){
+let totalSmall=small.reduce((a,t)=>a+t.time,0);
+merged.push({t:"Quick tasks",time:totalSmall});
+}
+
+let html="";
+let used=0;
+let cycle=0;
+
+totalBlocks=0;
+completedBlocks=0;
+
+for(let t of merged){
+let remaining=t.time;
+
+while(remaining>0 && used<total){
+
+let blockTime=Math.min(25,remaining);
+
+html+=`
+<div class="block">
+<label>
+<input type="checkbox" onchange="toggleTaskDone(this)">
+<span>🎯 ${t.t} - ${blockTime}m</span>
+</label>
+</div>
+`;
+
+totalBlocks++;
+remaining-=blockTime;
+used+=blockTime;
+cycle++;
+
+if(used>=total) break;
+
+if(cycle%4===0){
+html+=`<div class="break">🌙 15m reset</div>`;
+used+=15;
+}else{
+html+=`<div class="break">☕ 5m recharge</div>`;
+used+=5;
+}
+}
+}
+
+routine.innerHTML=html;
+updateProgress();
+}
+
+/* CHECK */
+function toggleTaskDone(cb){
+let span=cb.nextElementSibling;
+
+if(cb.checked){
+span.style.textDecoration="line-through";
+span.style.opacity="0.5";
+completedBlocks++;
+}else{
+span.style.textDecoration="none";
+span.style.opacity="1";
+completedBlocks--;
+}
+
+updateProgress();
+}
+
+/* TIMER */
+let timeLeft=1500;
+let interval=null;
+let isRunning=false;
+let isWork=true;
+
+function start(){
+if(isRunning) return;
+isRunning=true;
+
+interval=setInterval(()=>{
+timeLeft--;
+
+let m=Math.floor(timeLeft/60);
+let s=timeLeft%60;
+timer.innerText=`${m}:${s<10?"0":""}${s}`;
+
+if(timeLeft<=0){
+playSound();
+isWork=!isWork;
+timeLeft=isWork?1500:300;
+modeLabel.innerText=isWork?"Focus":"Break";
+}
+
+},1000);
+}
+
+function pause(){ clearInterval(interval); isRunning=false; }
+
+function reset(){
+clearInterval(interval);
+isRunning=false;
+timeLeft=1500;
+timer.innerText="25:00";
+modeLabel.innerText="Focus";
+}
+
+/* SOUND */
+function playSound(){
+new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
+
+/* FOCUS */
+function toggleFocus(){
+document.body.classList.toggle("focus");
+
+focusBtn.innerText=
+document.body.classList.contains("focus")
+?"Exit Focus"
+:"Focus Mode";
+}
+
+/* MUSIC */
+function music(id){
+player.innerHTML=`<iframe src="https://www.youtube.com/embed/${id}?autoplay=1"></iframe>`;
+}
+
+/* BG */
+function changeBG(type){
+const bgs={
+forest:"https://images.unsplash.com/photo-1441974231531-c6227db76b6e",
+cafe:"https://images.unsplash.com/photo-1509042239860-f550ce710b93",
+rain:"https://images.unsplash.com/photo-1500375592092-40eb2168fd21"
+};
+bg.style.backgroundImage=`url(${bgs[type]})`;
+}
+
+</script>
+
+</body>
+</html>
